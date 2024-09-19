@@ -10,7 +10,7 @@
 
 #include "espnow_comm.h"
 
-static const char *TAG = "CtrlNow";
+static const char *TAG = "espnow-comm";
 static EventGroupHandle_t s_evt_group;
 
 static void packet_sent_cb(const uint8_t *mac_addr, esp_now_send_status_t status)
@@ -60,7 +60,7 @@ static esp_err_t send_espnow_data(int data)
     const uint8_t destination_mac[] = MY_RECEIVER_MAC;
 
     // Send it
-    ESP_LOGI(TAG, "Sending %u bytes to " MACSTR, sizeof(data), MAC2STR(destination_mac));
+    ESP_LOGI(TAG, "Sending %u bytes (%d) to" MACSTR, sizeof(data), data, MAC2STR(destination_mac));
     esp_err_t err = esp_now_send(destination_mac, (uint8_t*)&data, sizeof(data));
     if(err != ESP_OK)
     {

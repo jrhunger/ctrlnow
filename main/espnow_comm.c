@@ -85,13 +85,13 @@ static esp_err_t send_espnow_data(int data)
     return ESP_OK;
 }
 
-void init_comms(void) {
+void espnow_comm_init(void) {
     s_evt_group = xEventGroupCreate();
     assert(s_evt_group);
 
     init_espnow_slave();
 }
 
-void send_comms(int data) {
+void espnow_comm_send(int data) {
     send_espnow_data(data);
 }

@@ -3,7 +3,6 @@
 
 #define MY_ESPNOW_WIFI_MODE WIFI_MODE_STA
 #define MY_ESPNOW_WIFI_IF ESP_IF_WIFI_STA
-#define MY_ESPNOW_CHANNEL 1
 
 // Destination MAC address
 // The default address is the broadcast address, which will work out of the box, but the slave will assume every tx succeeds.
@@ -20,6 +19,8 @@
 
 #define MY_SLAVE_DEEP_SLEEP_TIME_MS 10000
 
+// call once first to set everything up
+void espnow_comm_init(void);
 
-void init_comms(void);
-void send_comms(int);
+// call this every time data should be sent
+void espnow_comm_send(int);

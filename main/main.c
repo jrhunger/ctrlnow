@@ -9,11 +9,22 @@
 // logging tag
 static const char *TAG = "CtrlNow";
 
+// game output values
+#define OUTPUT_UP 0
+#define OUTPUT_RIGHT 1
+#define OUTPUT_DOWN 2
+#define OUTPUT_LEFT 3
+#define OUTPUT_FIRE 4
+
 // game input GPIOs
-#define GPIO_UP 3
 #define GPIO_DOWN 0
-#define GPIO_LEFT 10
 #define GPIO_RIGHT 1
+#define GPIO_FIRE 2
+#define GPIO_UP 3
+#define GPIO_LEFT 10
+
+// lookup table of GPIOs to corresponding output value
+static int map_gpio_to_output[11] = {99,99,99,99,99,99,99,99,99,99,99};
 
 // Queue for inputs
 static QueueHandle_t gpio_evt_queue = NULL;
@@ -24,8 +35,8 @@ static void IRAM_ATTR gpio_isr_handler(void* arg) {
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
-int64_t now = 0;
-int64_t last = 0;
+static int64_t now = 0;
+static int64_t last = 0;
 #define THRESHOLD 300000
 // process events from queue
 static void gpio_task(void* arg) {
@@ -35,34 +46,45 @@ static void gpio_task(void* arg) {
             now = esp_timer_get_time();
             if (now - last > THRESHOLD) {
                 last = now;
-                send_comms(gpio_num);
+                espnow_comm_send(map_gpio_to_output[gpio_num]);
             }
         }
     }
 }
 
 static void init_inputs(void) {
+    // init gpio to output map
+    map_gpio_to_output[GPIO_DOWN] = OUTPUT_DOWN;
+    map_gpio_to_output[GPIO_UP] = OUTPUT_UP;
+    map_gpio_to_output[GPIO_LEFT] = OUTPUT_LEFT;
+    map_gpio_to_output[GPIO_RIGHT] = OUTPUT_RIGHT;
+    map_gpio_to_output[GPIO_FIRE] = OUTPUT_FIRE;
+
     ESP_LOGI(TAG, "enable GPIO inputs");
-    // 3 = up
     gpio_pullup_en(GPIO_UP);
     gpio_set_direction(GPIO_UP, GPIO_MODE_INPUT);
     gpio_set_intr_type(GPIO_UP, GPIO_INTR_NEGEDGE);
     gpio_intr_enable(GPIO_UP);
-    // 0 = down
+
     gpio_pullup_en(GPIO_DOWN);
     gpio_set_direction(GPIO_DOWN, GPIO_MODE_INPUT);
     gpio_set_intr_type(GPIO_DOWN, GPIO_INTR_NEGEDGE);
     gpio_intr_enable(GPIO_DOWN);
-    // 10 = left
+
     gpio_pullup_en(GPIO_LEFT);
     gpio_set_direction(GPIO_LEFT, GPIO_MODE_INPUT);
     gpio_set_intr_type(GPIO_LEFT, GPIO_INTR_NEGEDGE);
     gpio_intr_enable(GPIO_LEFT);
-    // 1 = right
+
     gpio_pullup_en(GPIO_RIGHT);
     gpio_set_direction(GPIO_RIGHT, GPIO_MODE_INPUT);
     gpio_set_intr_type(GPIO_RIGHT, GPIO_INTR_NEGEDGE);
     gpio_intr_enable(GPIO_RIGHT);
+
+    gpio_pullup_en(GPIO_FIRE);
+    gpio_set_direction(GPIO_FIRE, GPIO_MODE_INPUT);
+    gpio_set_intr_type(GPIO_FIRE, GPIO_INTR_NEGEDGE);
+    gpio_intr_enable(GPIO_FIRE);
 
     ESP_LOGI(TAG, "add GPIO isr service");
     //create a queue to handle gpio event from isr
@@ -77,19 +99,11 @@ static void init_inputs(void) {
     gpio_isr_handler_add(GPIO_DOWN, gpio_isr_handler, (void*) GPIO_DOWN);
     gpio_isr_handler_add(GPIO_LEFT, gpio_isr_handler, (void*) GPIO_LEFT);
     gpio_isr_handler_add(GPIO_RIGHT, gpio_isr_handler, (void*) GPIO_RIGHT);
+    gpio_isr_handler_add(GPIO_FIRE, gpio_isr_handler, (void*) GPIO_FIRE);
 }
 
 void app_main(void)
 {
-    init_comms();
+    espnow_comm_init();
     init_inputs();
-    /*
-    int i = 0;
-    while (1) {
-        printf("[%d] Hello world!\n", i);
-        i++;
-        send_comms(i);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-    }
-    */
 }

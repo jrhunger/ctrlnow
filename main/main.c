@@ -44,10 +44,19 @@ static void gpio_task(void* arg) {
     for (;;) {
         if (xQueueReceive(gpio_evt_queue, &gpio_num, portMAX_DELAY)) {
             now = esp_timer_get_time();
+            // re-read the GPIO to make sure it is low. 
+            // seeing crosstalk bounces between buttons, but on read the undesired one is high
+            if (gpio_get_level(gpio_num) != 0) {
+                ESP_LOGI(TAG, "nonzero ignore GPIO %ld", gpio_num);
+                continue;
+            }
             if (now - last > THRESHOLD) {
                 last = now;
                 espnow_comm_send(map_gpio_to_output[gpio_num]);
             }
+            //else {
+            //    ESP_LOGI(TAG, "ignored GPIO %ld - too late", gpio_num);
+            //}
         }
     }
 }

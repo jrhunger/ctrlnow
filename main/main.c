@@ -17,11 +17,12 @@ static const char *TAG = "CtrlNow";
 #define OUTPUT_FIRE 4
 
 // game input GPIOs
-#define GPIO_DOWN 0
-#define GPIO_RIGHT 1
-#define GPIO_FIRE 2
-#define GPIO_UP 3
+#define GPIO_DOWN 9
+#define GPIO_RIGHT 7
+#define GPIO_UP 4
 #define GPIO_LEFT 10
+// not used for now
+#define GPIO_FIRE 3
 
 // lookup table of GPIOs to corresponding output value
 static int map_gpio_to_output[11] = {99,99,99,99,99,99,99,99,99,99,99};

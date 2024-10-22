@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
+#include "led_strip.h"
 
 // logging tag
 static const char *TAG = "CtrlNow";
@@ -17,12 +18,18 @@ static const char *TAG = "CtrlNow";
 #define OUTPUT_FIRE 4
 
 // game input GPIOs
-#define GPIO_DOWN 9
-#define GPIO_RIGHT 7
-#define GPIO_UP 4
-#define GPIO_LEFT 10
+#define GPIO_DOWN 6
+#define GPIO_RIGHT 5
+#define GPIO_UP 7
+#define GPIO_LEFT 4
 // not used for now
 #define GPIO_FIRE 3
+
+// LED output settings
+#define LED_GPIO 8
+
+// global led_strip handle
+static led_strip_handle_t led_strip;
 
 // lookup table of GPIOs to corresponding output value
 static int map_gpio_to_output[11] = {99,99,99,99,99,99,99,99,99,99,99};
@@ -34,6 +41,23 @@ static QueueHandle_t gpio_evt_queue = NULL;
 static void IRAM_ATTR gpio_isr_handler(void* arg) {
     uint32_t gpio_num = (uint32_t) arg;
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+
+// update LED based on which button was pressed
+static void update_led(int gpio_num) {
+    if (gpio_num == GPIO_UP) {
+        led_strip_set_pixel(led_strip, 0, 96, 0, 0);
+    }
+    if (gpio_num == GPIO_DOWN) {
+        led_strip_set_pixel(led_strip, 0, 0, 64, 0);
+    }
+    if (gpio_num == GPIO_LEFT) {
+        led_strip_set_pixel(led_strip, 0, 0, 0, 96);
+    }
+    if (gpio_num == GPIO_RIGHT) {
+        led_strip_set_pixel(led_strip, 0, 64, 0, 64);
+    }
+    led_strip_refresh(led_strip);
 }
 
 static int64_t now = 0;
@@ -54,6 +78,7 @@ static void gpio_task(void* arg) {
             if (now - last > THRESHOLD) {
                 last = now;
                 espnow_comm_send(map_gpio_to_output[gpio_num]);
+                update_led(gpio_num);
             }
             //else {
             //    ESP_LOGI(TAG, "ignored GPIO %ld - too late", gpio_num);
@@ -112,8 +137,33 @@ static void init_inputs(void) {
     gpio_isr_handler_add(GPIO_FIRE, gpio_isr_handler, (void*) GPIO_FIRE);
 }
 
+static void configure_led(void) {
+    ESP_LOGI(TAG, "configuring addressable LED");
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = LED_GPIO,
+        .max_leds = 1,
+    };
+    led_strip_rmt_config_t rmt_config = {
+        .resolution_hz = 10 * 1000 * 1000, // 10MHz
+        .flags.with_dma = false,
+    };
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
+    led_strip_clear(led_strip);
+}
+
 void app_main(void)
 {
     espnow_comm_init();
     init_inputs();
+    configure_led();
+    led_strip_set_pixel(led_strip, 0, 10, 10, 10);
+    led_strip_refresh(led_strip);
+    //while (1) {
+    //    for (int i = 255; i > 0; i--) {
+    //        ESP_LOGI(TAG, "Setting LED 0 to %d", i);
+    //        led_strip_set_pixel(led_strip, 0, i, i, i);
+    //        led_strip_refresh(led_strip);
+    //        vTaskDelay(100 / portTICK_PERIOD_MS);
+    //    }
+    //}
 }
